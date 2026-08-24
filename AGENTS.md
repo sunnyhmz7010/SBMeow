@@ -64,7 +64,7 @@ src/state.js     ← 状态持久化（原子写入、限长裁剪）
 | 变量 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `MEOW_NICKNAME` | 是 | - | MeoW 昵称 |
-| `CHECK_INTERVAL_SECONDS` | 否 | `5` | 轮询间隔（秒）。订阅源缓存 5 分钟，更短间隔无额外收益 |
+| `CHECK_INTERVAL_SECONDS` | 否 | `60` | 轮询间隔（秒）。订阅源缓存 5 分钟，更短间隔无额外收益 |
 | `CATEGORIES` | 否 | `all` | 全局版块过滤，所有规则均受此限制 |
 | `MATCH_SCOPE` | 否 | `all` | `title` / `summary` / `all`，仅对关键词/组合词/正则生效 |
 | `KEYWORDS` | 条件必填 | - | 普通关键词（逗号分隔） |

@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     environment:
       - MEOW_NICKNAME=你的昵称
-      - CHECK_INTERVAL_SECONDS=5
+      - CHECK_INTERVAL_SECONDS=60
       - CATEGORIES=all
       - MATCH_SCOPE=all
       - KEYWORDS=VPS,优惠,补货

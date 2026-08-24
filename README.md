@@ -45,7 +45,7 @@ services:
     restart: unless-stopped
     environment:
       - MEOW_NICKNAME=你的昵称
-      - CHECK_INTERVAL_SECONDS=5
+      - CHECK_INTERVAL_SECONDS=60
       - CATEGORIES=all
       - MATCH_SCOPE=all
       - KEYWORDS=VPS,优惠,补货
@@ -79,7 +79,7 @@ docker run -d \
   --name sbmeow \
   --restart unless-stopped \
   -e MEOW_NICKNAME="你的昵称" \
-  -e CHECK_INTERVAL_SECONDS=5 \
+  -e CHECK_INTERVAL_SECONDS=60 \
   -e CATEGORIES=all \
   -e MATCH_SCOPE=all \
   -e KEYWORDS="VPS,优惠,补货" \
@@ -105,7 +105,7 @@ docker run -d \
   --name sbmeow \
   --restart unless-stopped \
   -e MEOW_NICKNAME="你的昵称" \
-  -e CHECK_INTERVAL_SECONDS=5 \
+  -e CHECK_INTERVAL_SECONDS=60 \
   -e CATEGORIES=all \
   -e MATCH_SCOPE=all \
   -e KEYWORDS="VPS,优惠,补货" \
@@ -128,7 +128,7 @@ docker run -d \
 | 变量 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- |
 | `MEOW_NICKNAME` | 是 | - | MeoW 用户昵称，不能包含 `/` |
-| `CHECK_INTERVAL_SECONDS` | 否 | `5` | 检查新帖的间隔（秒），范围 1-2147483。订阅源缓存 5 分钟，更短的间隔不会带来更快更新 |
+| `CHECK_INTERVAL_SECONDS` | 否 | `60` | 检查新帖的间隔（秒），范围 1-2147483。订阅源缓存 5 分钟，更短的间隔不会带来更快更新 |
 | `CATEGORIES` | 否 | `all` | 全局版块过滤：`all` 不过滤，或用英文逗号分隔版块标识仅监控指定版块。所有匹配规则均受此限制 |
 | `MATCH_SCOPE` | 否 | `all` | `title` 仅匹配标题，`summary` 仅匹配摘要，`all` 同时匹配两者。仅对关键词/组合词/正则生效 |
 | `KEYWORDS` | 条件必填 | - | 普通关键词，英文逗号分隔。命中任意一个即推送 |

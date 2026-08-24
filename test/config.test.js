@@ -12,7 +12,7 @@ test('配置使用约定默认值', () => {
   const config = parseConfig(requiredEnv);
 
   assert.equal(config.meowNickname, 'tester');
-  assert.equal(config.checkIntervalMs, 5000);
+  assert.equal(config.checkIntervalMs, 60000);
   assert.equal(config.matchScope, 'all');
   assert.equal(config.categories, null);
   assert.equal(config.pushExisting, false);

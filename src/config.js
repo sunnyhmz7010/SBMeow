@@ -74,7 +74,7 @@ export function parseConfig(env = process.env) {
   if (!meowNickname) throw new Error('MEOW_NICKNAME 不能为空，请设置 MeoW 用户昵称');
   if (meowNickname.includes('/')) throw new Error('MEOW_NICKNAME 不能包含斜杠');
 
-  const intervalSeconds = Number(env.CHECK_INTERVAL_SECONDS ?? '5');
+  const intervalSeconds = Number(env.CHECK_INTERVAL_SECONDS ?? '60');
   const intervalMs = intervalSeconds * 1000;
   if (!Number.isSafeInteger(intervalSeconds) || intervalSeconds < 1 || intervalMs > 2_147_483_647) {
     throw new Error('CHECK_INTERVAL_SECONDS 必须是 1 到 2147483 之间的整数');
