@@ -1,0 +1,20 @@
+{
+  "name": "sbmeow",
+  "version": "1.0.0",
+  "description": "自动订阅烧饼论坛（sb.sb）RSS，按关键词/版块匹配筛选帖子并推送到 MeoW",
+  "private": true,
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sunnyhmz7010/SBMeow.git"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@xmldom/xmldom": "0.9.10"
+  }
+}

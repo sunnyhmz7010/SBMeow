@@ -1,0 +1,173 @@
+import path from 'node:path';
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
+
+import { parseConfig } from './config.js';
+import { fetchFeed } from './feed.js';
+import { matchItem } from './matcher.js';
+import { createMeowClient } from './meow.js';
+import { Monitor } from './monitor.js';
+import { StateStore } from './state.js';
+
+const require = createRequire(import.meta.url);
+const pkg = require('../package.json');
+const VERSION = pkg.version;
+
+export function createLogger() {
+  const write = (level, message) => console[level](`[${new Date().toISOString()}] ${message}`);
+  return {
+    info: (message) => write('log', message),
+    warn: (message) => write('warn', message),
+    error: (message) => write('error', message)
+  };
+}
+
+function compareSemver(a, b) {
+  const partsA = a.split('.').map(Number);
+  const partsB = b.split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    if (partsA[i] > partsB[i]) return 1;
+    if (partsA[i] < partsB[i]) return -1;
+  }
+  return 0;
+}
+
+async function checkUpdate(logger, currentVersion, fetchImpl = globalThis.fetch) {
+  try {
+    const response = await fetchImpl(
+      'https://api.github.com/repos/sunnyhmz7010/SBMeow/releases/latest',
+      { signal: AbortSignal.timeout(10000) }
+    );
+    if (!response.ok) return null;
+    const release = await response.json();
+    const latestVersion = release.tag_name?.replace(/^v/, '');
+    if (!latestVersion) return null;
+    if (compareSemver(latestVersion, currentVersion) > 0) {
+      const info = `发现新版本 v${latestVersion}（当前 v${currentVersion}），请访问 ${release.html_url} 查看更新`;
+      logger.info(info);
+      return { latestVersion, url: release.html_url };
+    }
+    logger.info(`当前已是最新版本 v${currentVersion}`);
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function describeConfig(config) {
+  const categories = config.categories ? [...config.categories].join(',') : 'all';
+  const ruleParts = [];
+  if (config.keywords.length) ruleParts.push(`关键词：${config.keywords.join(',')}`);
+  if (config.keywordGroups.length) ruleParts.push(`组合词：${config.keywordGroups.map((g) => g.join('+')).join(',')}`);
+  if (config.regexPatterns.length) ruleParts.push(`正则：${config.regexPatterns.map((r) => r.source).join(',')}`);
+  if (config.pushCategory) {
+    const label = config.pushCategory === 'all' ? 'all' : [...config.pushCategory].join(',');
+    ruleParts.push(`版块匹配：${label}`);
+  }
+  const ruleCount = ruleParts.length;
+  const parts = [
+    `版本 v${VERSION}`,
+    `MeoW 昵称 ${config.meowNickname}`,
+    `轮询间隔 ${config.checkIntervalMs / 1000} 秒`,
+    `匹配范围 ${config.matchScope}`,
+    `监控版块 ${categories}`,
+    `规则 ${ruleCount} 条（${ruleParts.join(' | ')}）`
+  ];
+  if (config.blockedKeywords.length) parts.push(`屏蔽词：${config.blockedKeywords.join(',')}`);
+  if (config.categories) parts.push(`版块过滤：${[...config.categories].join(',')}`);
+  parts.push(`首次推送已有 ${config.pushExisting ? '是' : '否'}`);
+  parts.push(`显示链接 ${config.showLinkUrl ? '是' : '否'}`);
+  if (config.healthCheckMs) parts.push(`自检间隔 ${config.healthCheckMs / 60000} 分钟`);
+  return parts.join('，');
+}
+
+export async function runApp({
+  env = process.env,
+  logger = createLogger(),
+  stateFactory = () => new StateStore('/app/data/state.json', 1000),
+  pusherFactory = (config) => createMeowClient({ nickname: config.meowNickname, showLinkUrl: config.showLinkUrl }),
+  monitorFactory = (options) => new Monitor(options),
+  fetchItems = () => fetchFeed(),
+  checkUpdateFn = (logger_, currentVersion, fetchImpl) => checkUpdate(logger_, currentVersion, fetchImpl),
+  registerSignals = true
+} = {}) {
+  const config = parseConfig(env);
+  logger.info(`启动配置：${describeConfig(config)}`);
+
+  const pusher = pusherFactory(config);
+
+  let startupRssOk = true;
+  try {
+    await fetchItems();
+    logger.info('自检 RSS 连接正常');
+  } catch (error) {
+    startupRssOk = false;
+    logger.warn(`自检 RSS 连接失败：${error.message}`);
+  }
+
+  const updateInfo = await checkUpdateFn(logger, VERSION);
+
+  try {
+    await pusher.pushHealthCheck({ rssOk: startupRssOk, version: VERSION, updateInfo, configSummary: describeConfig(config) });
+    logger.info('启动信息已推送至 MeoW');
+  } catch (error) {
+    logger.error(`MeoW 推送失败，${error.message}`);
+    throw error;
+  }
+
+  const controller = new AbortController();
+  let healthCheckTimer;
+  if (config.healthCheckMs) {
+    healthCheckTimer = setInterval(async () => {
+      let rssOk = true;
+      try {
+        await fetchItems();
+        logger.info('自检 RSS 连接正常');
+      } catch (error) {
+        rssOk = false;
+        logger.warn(`自检 RSS 连接失败，${error.message}`);
+      }
+      const periodicUpdateInfo = await checkUpdateFn(logger, VERSION);
+      try {
+        await pusher.pushHealthCheck({ rssOk, version: VERSION, updateInfo: periodicUpdateInfo });
+        logger.info('自检 MeoW 推送正常');
+      } catch (error) {
+        logger.error(`自检 MeoW 推送失败，${error.message}`);
+      }
+    }, config.healthCheckMs);
+  }
+
+  if (registerSignals) {
+    const stop = (signal) => {
+      logger.info(`收到 ${signal}，将在当前操作完成后退出`);
+      if (healthCheckTimer) clearInterval(healthCheckTimer);
+      controller.abort();
+    };
+    process.once('SIGTERM', () => stop('SIGTERM'));
+    process.once('SIGINT', () => stop('SIGINT'));
+  }
+
+  const monitor = monitorFactory({
+    config,
+    fetchItems,
+    matcher: matchItem,
+    pusher,
+    state: stateFactory(),
+    logger
+  });
+
+  await monitor.initialize();
+  logger.info('监控已启动');
+  try {
+    await monitor.run(controller.signal);
+  } finally {
+    if (healthCheckTimer) clearInterval(healthCheckTimer);
+  }
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  runApp().catch((error) => {
+    console.error(`[${new Date().toISOString()}] 启动失败: ${error.message}`);
+    process.exitCode = 1;
+  });
+}

@@ -1,0 +1,17 @@
+services:
+  sbmeow:
+    image: ghcr.io/sunnyhmz7010/sbmeow:latest
+    container_name: sbmeow
+    restart: unless-stopped
+    environment:
+      - MEOW_NICKNAME=你的昵称
+      - CHECK_INTERVAL_SECONDS=5
+      - CATEGORIES=all
+      - MATCH_SCOPE=all
+      - KEYWORDS=VPS,优惠,补货
+      - KEYWORD_GROUPS=[]
+      - REGEX_PATTERNS=[]
+      - PUSH_CATEGORY=trade
+      - BLOCK_KEYWORDS=求购,已收
+      - PUSH_EXISTING=false
+      - HEALTH_CHECK_MINUTES=1440
