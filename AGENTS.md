@@ -38,7 +38,6 @@ docker build -t sbmeow .  # 构建镜像
 - 容器内工作目录 `/app`，状态文件 `/app/data/state.json`
 - 数据源固定为烧饼论坛全站 Atom 源（含作者字段）；RSS 2.0 源不含作者，勿改回
 - 订阅源条目节点为中文名（如「主机」），`src/feed.js` 统一映射为 slug 后参与匹配与存储
-- 烧饼论坛订阅源对部分地区有限制：受限网络下需 `NODE_USE_ENV_PROXY=1` + `HTTPS_PROXY`（Node 24+ 原生代理支持）；海外 VPS 直连无需配置
 
 ## 架构分层
 
