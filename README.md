@@ -33,8 +33,6 @@
 - Docker（18.09+）
 - 一个 MeoW 昵称（`https://api.chuckfang.com/{你的昵称}/烧饼论坛`）
 
-> 💡 烧饼论坛订阅源对部分地区有访问限制。部署在海外 VPS 上通常可直连；若运行在受限网络（如中国大陆直连环境），需为容器提供代理出口，追加两个环境变量即可：`NODE_USE_ENV_PROXY=1` 和 `HTTPS_PROXY=http://代理地址:端口`（Node.js 24+ 原生支持）。
-
 ### 📦 Docker Compose（推荐）
 
 新建 `compose.yaml`，写入以下内容：
@@ -144,7 +142,7 @@ docker run -d \
 
 > `KEYWORDS`、`KEYWORD_GROUPS`、`REGEX_PATTERNS`、`PUSH_CATEGORY` 四项至少配置一种。
 
-可选版块标识（与 `https://sb.sb/go/<slug>/` 路径一致）：
+可选版块标识：
 
 | 标识 | 版块 | 标识 | 版块 |
 | --- | --- | --- | --- |
