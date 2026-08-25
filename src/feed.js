@@ -68,20 +68,25 @@ function decodeHtmlEntities(value = '') {
     .replace(/&[a-zA-Z]+;/g, (match) => NAMED_ENTITIES[match] ?? match);
 }
 
+// 循环剥离 HTML 标签与实体解码直到结果稳定，防止解码后重新出现的标签或未闭合 script/style 残留
 export function cleanSummary(value = '') {
   if (!value) return '';
-  return decodeHtmlEntities(
-    value
-      .replace(/<(?:script|style)[\s\S]*?<\/(?:script|style)>/gi, '')
-      .replace(/<br\s*\/?>/gi, ' ')
-      .replace(/<\/(?:p|div|li|tr|h[1-6])>/gi, ' ')
-      .replace(/<(?:\/?[a-zA-Z][a-zA-Z0-9:-]*(?:\s+[^>]*)?|\s*\/?)>/g, '')
-      .replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '')
-      .replace(/\[[0-9;]+[a-zA-Z](?![a-zA-Z0-9])/g, '')
-      .replace(/\[[HJKR](?![a-zA-Z])/g, '')
-  )
-    .replace(/\s+/gu, ' ')
-    .trim();
+  let text = String(value)
+    .replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '')
+    .replace(/\[[0-9;]+[a-zA-Z](?![a-zA-Z0-9])/g, '')
+    .replace(/\[[HJKR](?![a-zA-Z])/g, '');
+  let previous;
+  do {
+    previous = text;
+    text = decodeHtmlEntities(
+      text
+        .replace(/<(?:script|style)\b[^>]*>[\s\S]*?(?:<\/(?:script|style)[^>]*>|$)/gi, ' ')
+        .replace(/<br\s*\/?\s*>/gi, ' ')
+        .replace(/<\/(?:p|div|li|tr|h[1-6])\b[^>]*>/gi, ' ')
+        .replace(/<\/?[a-zA-Z!][^>]*>/g, '')
+    );
+  } while (text !== previous);
+  return text.replace(/\s+/gu, ' ').trim();
 }
 
 function textOf(element, tagName) {
