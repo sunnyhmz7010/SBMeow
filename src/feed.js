@@ -68,6 +68,46 @@ function decodeHtmlEntities(value = '') {
     .replace(/&[a-zA-Z]+;/g, (match) => NAMED_ENTITIES[match] ?? match);
 }
 
+// 字符级状态机剥离 HTML 标签：不依赖正则做整段标签匹配，
+// 未闭合的 script/style 丢弃其后全部内容，未闭合的普通标签丢弃其后剩余文本（与浏览器宽松解析一致）
+function stripHtmlTags(value) {
+  let out = '';
+  let i = 0;
+  while (i < value.length) {
+    const ch = value[i];
+    if (ch !== '<') {
+      out += ch;
+      i += 1;
+      continue;
+    }
+    const next = value[i + 1] ?? '';
+    if (!/[a-zA-Z!/?]/.test(next)) {
+      out += ch;
+      i += 1;
+      continue;
+    }
+    let j = i + 1;
+    let name = '';
+    if (next === '/') j += 1;
+    while (j < value.length && /[a-zA-Z0-9]/.test(value[j])) {
+      name += value[j];
+      j += 1;
+    }
+    const lower = name.toLowerCase();
+    if (next !== '/' && (lower === 'script' || lower === 'style')) {
+      const lowerValue = value.toLowerCase();
+      const closeIndex = lowerValue.indexOf(`</${lower}`, j);
+      if (closeIndex === -1) break;
+      i = closeIndex;
+      continue;
+    }
+    const gtIndex = value.indexOf('>', j);
+    if (gtIndex === -1) break;
+    i = gtIndex + 1;
+  }
+  return out;
+}
+
 // 循环剥离 HTML 标签与实体解码直到结果稳定，防止解码后重新出现的标签或未闭合 script/style 残留
 export function cleanSummary(value = '') {
   if (!value) return '';
@@ -78,19 +118,15 @@ export function cleanSummary(value = '') {
   let previous;
   do {
     previous = text;
-    text = decodeHtmlEntities(
-      text
-        .replace(/<(?:script|style)\b[^>]*>[\s\S]*?(?:<\/(?:script|style)[^>]*>|$)/gi, ' ')
-        .replace(/<br\s*\/?\s*>/gi, ' ')
-        .replace(/<\/(?:p|div|li|tr|h[1-6])\b[^>]*>/gi, ' ')
-        .replace(/<\/?[a-zA-Z!][^>]*>/g, '')
+    text = stripHtmlTags(
+      decodeHtmlEntities(
+        text
+          .replace(/<br\s*\/?\s*>/gi, ' ')
+          .replace(/<\/(?:p|div|li|tr|h[1-6])\b[^>]*>/gi, ' ')
+      )
     );
   } while (text !== previous);
-  // 兜底中和：剥离残留的未闭合标签前缀（如 "<script"），仅移除紧跟标签起始字符的孤立 "<"
-  return text
-    .replace(/<(?=[/!a-zA-Z])/g, '')
-    .replace(/\s+/gu, ' ')
-    .trim();
+  return text.replace(/\s+/gu, ' ').trim();
 }
 
 function textOf(element, tagName) {
