@@ -86,7 +86,11 @@ export function cleanSummary(value = '') {
         .replace(/<\/?[a-zA-Z!][^>]*>/g, '')
     );
   } while (text !== previous);
-  return text.replace(/\s+/gu, ' ').trim();
+  // 兜底中和：剥离残留的未闭合标签前缀（如 "<script"），仅移除紧跟标签起始字符的孤立 "<"
+  return text
+    .replace(/<(?=[/!a-zA-Z])/g, '')
+    .replace(/\s+/gu, ' ')
+    .trim();
 }
 
 function textOf(element, tagName) {
