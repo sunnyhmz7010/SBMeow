@@ -28,7 +28,13 @@ const ATOM = `<?xml version="1.0" encoding="UTF-8"?>
 test('清理摘要中的 HTML、实体和多余空白', () => {
   assert.equal(cleanSummary('<p>年付&nbsp;100 元 &amp; 可退款</p>'), '年付 100 元 & 可退款');
   assert.equal(cleanSummary('1 &lt; 2 &amp;&amp; 3 &gt; 2'), '1 < 2 && 3 > 2');
-  assert.equal(cleanSummary('&copy; &mdash; &hellip;'), '© — …');
+  assert.equal(cleanSummary('&copy; &mdash; &hellip; &#65; &#x42;'), '© — … A B');
+});
+
+test('清理包含未闭合或不匹配标签的摘要时不报错', () => {
+  assert.equal(cleanSummary('大家觉得<支持>这个方案吗？'), '大家觉得<支持>这个方案吗？');
+  assert.equal(cleanSummary('<div>测试<未闭合标签>内容'), '测试<未闭合标签>内容');
+  assert.equal(cleanSummary('<div><p>未闭合 HTML 文本<br><span>测试'), '未闭合 HTML 文本 测试');
 });
 
 test('清理 ANSI 转义序列和残留控制码', () => {

@@ -19,15 +19,67 @@ const CATEGORY_SLUG_BY_NAME = new Map([
   ['公告', 'announcement']
 ]);
 
+const NAMED_ENTITIES = {
+  '&nbsp;': ' ',
+  '&amp;': '&',
+  '&lt;': '<',
+  '&gt;': '>',
+  '&quot;': '"',
+  '&apos;': "'",
+  '&copy;': '©',
+  '&reg;': '®',
+  '&trade;': '™',
+  '&mdash;': '—',
+  '&ndash;': '–',
+  '&hellip;': '…',
+  '&ldquo;': '“',
+  '&rdquo;': '”',
+  '&lsquo;': '‘',
+  '&rsquo;': '’',
+  '&middot;': '·',
+  '&bull;': '•',
+  '&laquo;': '«',
+  '&raquo;': '»',
+  '&cent;': '¢',
+  '&pound;': '£',
+  '&yen;': '¥',
+  '&euro;': '€',
+  '&sect;': '§',
+  '&deg;': '°',
+  '&plusmn;': '±',
+  '&times;': '×',
+  '&divide;': '÷',
+  '&ne;': '≠',
+  '&le;': '≤',
+  '&ge;': '≥',
+  '&infin;': '∞'
+};
+
+function decodeHtmlEntities(value = '') {
+  return value
+    .replace(/&#(\d+);/g, (_, dec) => {
+      const code = Number.parseInt(dec, 10);
+      return Number.isFinite(code) ? String.fromCodePoint(code) : _;
+    })
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => {
+      const code = Number.parseInt(hex, 16);
+      return Number.isFinite(code) ? String.fromCodePoint(code) : _;
+    })
+    .replace(/&[a-zA-Z]+;/g, (match) => NAMED_ENTITIES[match] ?? match);
+}
+
 export function cleanSummary(value = '') {
-  const document = new DOMParser({ onError() {} }).parseFromString(
-    `<html><body>${value}</body></html>`,
-    'text/html'
-  );
-  return (document.getElementsByTagName('body').item(0)?.textContent ?? value)
-    .replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '')
-    .replace(/\[[0-9;]+[a-zA-Z](?![a-zA-Z0-9])/g, '')
-    .replace(/\[[HJKR](?![a-zA-Z])/g, '')
+  if (!value) return '';
+  return decodeHtmlEntities(
+    value
+      .replace(/<(?:script|style)[\s\S]*?<\/(?:script|style)>/gi, '')
+      .replace(/<br\s*\/?>/gi, ' ')
+      .replace(/<\/(?:p|div|li|tr|h[1-6])>/gi, ' ')
+      .replace(/<(?:\/?[a-zA-Z][a-zA-Z0-9:-]*(?:\s+[^>]*)?|\s*\/?)>/g, '')
+      .replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '')
+      .replace(/\[[0-9;]+[a-zA-Z](?![a-zA-Z0-9])/g, '')
+      .replace(/\[[HJKR](?![a-zA-Z])/g, '')
+  )
     .replace(/\s+/gu, ' ')
     .trim();
 }
