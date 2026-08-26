@@ -1,6 +1,6 @@
 <div align="center">
   <h1>SBMeow</h1>
-  <p>自动监控烧饼论坛（sb.sb）新帖，按关键词筛选后推送到 MeoW。</p>
+  <p>自动监控烧饼论坛新帖，按关键词筛选后推送到 MeoW。</p>
 </div>
 
 <p align="center">
