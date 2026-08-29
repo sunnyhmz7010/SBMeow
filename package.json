@@ -1,6 +1,6 @@
 {
   "name": "sbmeow",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "自动订阅烧饼论坛（sb.sb）RSS，按关键词/版块匹配筛选帖子并推送到 MeoW",
   "private": true,
   "type": "module",
