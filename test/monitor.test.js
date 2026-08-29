@@ -237,6 +237,56 @@ test('按旧到新处理，未命中去重，推送失败下轮重试', async ()
   assert.deepEqual(state.values(), ['1', '3', '2']);
 });
 
+test('帖子相关日志统一使用帖子链接', async () => {
+  const success = { ...sampleItem, id: 'success' };
+  const failed = { ...sampleItem, id: 'failed', link: 'https://sb.sb/t/failed/' };
+  const state = memoryState({ existed: true });
+  const logs = [];
+  const monitor = new Monitor({
+    config: monitorConfig(),
+    fetchItems: async () => [success, failed],
+    matcher: () => ({ matched: true, reason: 'keyword:VPS' }),
+    pusher: {
+      push: async (item) => {
+        if (item.id === 'failed') throw new Error('temporary');
+      }
+    },
+    state,
+    logger: { info: (message) => logs.push(message), warn: (message) => logs.push(message), error: (message) => logs.push(message) }
+  });
+
+  await monitor.initialize();
+  await monitor.poll();
+
+  assert.equal(logs.includes('命中帖子：https://sb.sb/t/1/'), true);
+  assert.equal(logs.includes('推送成功 https://sb.sb/t/1/'), true);
+  assert.equal(logs.includes('命中帖子：https://sb.sb/t/failed/'), true);
+  assert.equal(logs.includes('推送失败 https://sb.sb/t/failed/，temporary'), true);
+});
+
+test('MeoW 敏感词 403 丢弃帖子并标记已处理', async () => {
+  const state = memoryState({ existed: true });
+  state.addPending(sampleItem);
+  const logs = [];
+  const monitor = new Monitor({
+    config: monitorConfig(),
+    fetchItems: async () => [sampleItem],
+    matcher: () => ({ matched: true, reason: 'keyword:VPS' }),
+    pusher: {
+      push: async () => { throw new Error('MeoW 推送失败: 403 敏感词，禁止发送'); }
+    },
+    state,
+    logger: { info: (message) => logs.push(message), warn: (message) => logs.push(message), error: (message) => logs.push(message) }
+  });
+
+  await monitor.initialize();
+  await monitor.poll();
+
+  assert.equal(state.has(sampleItem.id), true);
+  assert.deepEqual(state.pendingItems(), []);
+  assert.equal(logs.includes('推送丢弃 https://sb.sb/t/1/，MeoW 推送失败: 403 敏感词，禁止发送'), true);
+});
+
 test('RSS 获取失败时不推进状态', async () => {
   const state = memoryState({ existed: true });
   const monitor = new Monitor({
@@ -344,6 +394,35 @@ test('RSS 连续异常仅推送一次，恢复后推送恢复通知', async () =
   assert.equal(errors.length, 1, '应仅推送一次异常通知');
   assert.equal(errors[0].msg, 'rss down');
   assert.equal(recoveries.length, 1, '恢复后应推送一次恢复通知');
+});
+
+test('RSS 单次异常后恢复不推送异常或恢复通知', async () => {
+  const state = memoryState({ existed: true });
+  const events = [];
+  const controller = new AbortController();
+  let pollCalls = 0;
+
+  const monitor = new Monitor({
+    config: monitorConfig({ checkIntervalMs: 1 }),
+    fetchItems: async () => {
+      pollCalls++;
+      if (pollCalls === 1) throw new Error('rss down');
+      controller.abort();
+      return [];
+    },
+    matcher: () => ({ matched: true, reason: 'keyword:VPS' }),
+    pusher: {
+      pushError: async (msg) => events.push({ type: 'error', msg }),
+      pushRecovery: async () => events.push({ type: 'recovery' })
+    },
+    state,
+    logger: silentLogger
+  });
+
+  await monitor.initialize();
+  await monitor.run(controller.signal);
+
+  assert.deepEqual(events, []);
 });
 
 test('MeoW 恢复通知使用固定标题、消息和链接', async () => {
